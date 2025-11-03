@@ -353,7 +353,11 @@ def _LSE_real(x, lambda_, d=1):
     x_ = x_.sum(dim=d)
     out = torch.log(x_)
     return out
-def _run_on_single_gpu(model, batch_list_t, batch_list_v, batch_sequence_output_list, batch_visual_output_list, batch_audio_output_list):
+def _run_on_single_gpu(model, batch_list_t, batch_list_v, batch_sequence_output_list, batch_raw_video_list, batch_audio_output_list):
+    """
+    Modified: Now video embedding is computed on-the-fly for each text-video pair
+    since gating function requires text embedding.
+    """
     sim_matrix = []
     for idx1, b1 in enumerate(batch_list_t):
         input_mask, segment_ids, *_tmp = b1
@@ -363,16 +367,17 @@ def _run_on_single_gpu(model, batch_list_t, batch_list_v, batch_sequence_output_
         each_ff_gate_row = []
         
         for idx2, b2 in enumerate(batch_list_v):
-            video_mask, *_tmp = b2
-            visual_output = batch_visual_output_list[idx2]
+            video, video_mask, *_tmp = b2
             audio_output = batch_audio_output_list[idx2]
+            
+            # Compute visual_output on-the-fly (can't cache anymore due to text dependency)
+            visual_output = model.get_visual_output(video, video_mask)
+            
             b1b2_logits, gate_tuple,*_tmp = model.get_similarity_logits(sequence_output, visual_output, audio_output, input_mask, video_mask,
                                                                      loose_type=model.loose_type)
             b1b2_logits = b1b2_logits.cpu().detach().numpy()
             b1b2_attn = gate_tuple[0].cpu().detach().numpy()
             b1b2_ff = gate_tuple[1].cpu().detach().numpy()
-
-
 
             each_row.append(b1b2_logits)
             each_attn_gate_row.append(b1b2_attn)
@@ -381,7 +386,6 @@ def _run_on_single_gpu(model, batch_list_t, batch_list_v, batch_sequence_output_
         each_row = np.concatenate(tuple(each_row), axis=-1)
         sim_matrix.append(each_row)
     return sim_matrix, each_attn_gate_row, each_ff_gate_row
-    # return np.array(sim_)
 
 
 def eval_epoch(args, model, test_dataloader, device, n_gpu):
@@ -418,12 +422,14 @@ def eval_epoch(args, model, test_dataloader, device, n_gpu):
         batch_list_v = []
         batch_list_sentence = []
         batch_list_video_id = []
-        batch_sequence_output_list, batch_visual_output_list = [], []
+        batch_sequence_output_list = []
         batch_audio_output_list = []
+        # Changed: Store raw video data instead of pre-computed visual_output
+        # because visual embedding now depends on text embedding
         total_video_num = 0
 
         # ----------------------------
-        # 1. cache the features
+        # 1. cache the features (text, audio, and RAW video)
         # ----------------------------
         for bid, batch in enumerate(test_dataloader):
             #with autocast():
@@ -453,21 +459,21 @@ def eval_epoch(args, model, test_dataloader, device, n_gpu):
 
                 if len(filter_inds) > 0:
                     video, video_mask = video[filter_inds, ...], video_mask[filter_inds, ...]
-                    visual_output = model.get_visual_output(video, video_mask)
-                    batch_visual_output_list.append(visual_output)
-                    batch_list_v.append((video_mask,))
+                    # Changed: Store raw video instead of visual_output
+                    batch_list_v.append((video, video_mask,))
                     audio_output = model.get_audio_output(audio[filter_inds, ...])
-                    batch_audio_output_list.append(audio_output) #.cpu().detach().numpy())
+                    batch_audio_output_list.append(audio_output)
                 total_video_num += b
             else:
-                sequence_output, visual_output = model.get_sequence_visual_output(input_ids, segment_ids, input_mask, video, video_mask)
+                # Changed: Only get sequence output, keep raw video for later
+                sequence_output = model.get_sequence_output(input_ids, segment_ids, input_mask)
                 audio_output = model.get_audio_output(audio)
 
                 batch_sequence_output_list.append(sequence_output)
                 batch_list_t.append((input_mask, segment_ids,))
 
-                batch_visual_output_list.append(visual_output)
-                batch_list_v.append((video_mask,))
+                # Changed: Store raw video and video_mask instead of visual_output
+                batch_list_v.append((video, video_mask,))
                 batch_audio_output_list.append(audio_output)
 
             print("{}/{}\r".format(bid, len(test_dataloader)), end="")
@@ -477,13 +483,13 @@ def eval_epoch(args, model, test_dataloader, device, n_gpu):
         # import pdb; pdb.set_trace()
         # ----------------------------------
         # 2. calculate the similarity
+        # Note: Visual embedding is now computed on-the-fly in _run_on_single_gpu
         # ----------------------------------
         if n_gpu > 1:
             device_ids = list(range(n_gpu))
             batch_list_t_splits = []
             batch_list_v_splits = []
             batch_t_output_splits = []
-            batch_v_output_splits = []
             batch_a_output_splits = []
             bacth_len = len(batch_list_t)
             split_len = (bacth_len + n_gpu - 1) // n_gpu
@@ -494,7 +500,6 @@ def eval_epoch(args, model, test_dataloader, device, n_gpu):
                     batch_list_v_splits.append(batch_list_v)
 
                     batch_t_output_splits.append(batch_sequence_output_list[s_:e_])
-                    batch_v_output_splits.append(batch_visual_output_list)
                     batch_a_output_splits.append(batch_audio_output_list)
                 else:
                     devc = torch.device('cuda:{}'.format(str(dev_id)))
@@ -505,24 +510,19 @@ def eval_epoch(args, model, test_dataloader, device, n_gpu):
 
                     devc_batch_list = [b.to(devc) for b in batch_sequence_output_list[s_:e_]]
                     batch_t_output_splits.append(devc_batch_list)
-                    devc_batch_list = [b.to(devc) for b in batch_visual_output_list]
-                    batch_v_output_splits.append(devc_batch_list)
 
                     devc_batch_list = [b.to(devc) for b in batch_audio_output_list]
                     batch_a_output_splits.append(devc_batch_list)
 
-            # parameters_tuple_list = [(batch_list_t_splits[dev_id], batch_list_v_splits[dev_id],
-            #                           batch_t_output_splits[dev_id], batch_v_output_splits[dev_id]) for dev_id in device_ids]
             parameters_tuple_list = [(batch_list_t_splits[dev_id], batch_list_v_splits[dev_id],
-                                      batch_t_output_splits[dev_id], batch_v_output_splits[dev_id], batch_a_output_splits[dev_id]) for dev_id in device_ids]
+                                      batch_t_output_splits[dev_id], batch_a_output_splits[dev_id]) for dev_id in device_ids]
             parallel_outputs  = parallel_apply(_run_on_single_gpu, model, parameters_tuple_list, device_ids)
             sim_matrix = []
             for idx in range(len(parallel_outputs)):
                 sim_matrix += parallel_outputs[idx][0]
             sim_matrix = np.concatenate(tuple(sim_matrix), axis=0)
         else:
-            # sim_matrix = _run_on_single_gpu(model, batch_list_t, batch_list_v, batch_sequence_output_list, batch_visual_output_list, batch_audio_output_list)
-            sim_matrix,attn_gate,ff_gate = _run_on_single_gpu(model, batch_list_t, batch_list_v, batch_sequence_output_list, batch_visual_output_list, batch_audio_output_list)
+            sim_matrix, attn_gate, ff_gate = _run_on_single_gpu(model, batch_list_t, batch_list_v, batch_sequence_output_list, batch_list_v, batch_audio_output_list)
             sim_matrix = np.concatenate(tuple(sim_matrix), axis=0)
             attn_gate = np.concatenate(tuple(attn_gate), axis=0)
             ff_gate = np.concatenate(tuple(ff_gate), axis=0)
