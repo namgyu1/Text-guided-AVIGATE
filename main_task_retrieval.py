@@ -416,6 +416,9 @@ def eval_epoch(args, model, test_dataloader, device, n_gpu):
         logger.warning("Eval under the multi-sentence per video clip setting.")
         logger.warning("sentence num: {}, video num: {}".format(sentence_num_, video_num_))
 
+    # Clear GPU cache before evaluation to free up memory
+    torch.cuda.empty_cache()
+    
     model.eval()
     with torch.no_grad():
         batch_list_t = []
