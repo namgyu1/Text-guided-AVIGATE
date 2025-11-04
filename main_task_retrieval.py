@@ -311,6 +311,10 @@ def train_epoch(epoch, args, model, train_dataloader, device, n_gpu, optimizer, 
         d_start_time = time.time()
         loss = model(input_ids, segment_ids, input_mask, video, video_mask, audio)
         data_time += time.time()-d_start_time
+        
+        # Store the original loss for logging before dividing
+        loss_for_log = float(loss.mean()) if n_gpu > 1 else float(loss)
+        
         if n_gpu > 1:
             loss = loss.mean()  # mean() to average on multi-gpu.
         if args.gradient_accumulation_steps > 1:
@@ -340,7 +344,7 @@ def train_epoch(epoch, args, model, train_dataloader, device, n_gpu, optimizer, 
                 logger.info("Epoch: %d/%s, Step: %d/%d, Lr: %s, Loss: %f, Time/step: %f, DTime/step: %f", epoch + 1,
                             args.epochs, step + 1,
                             len(train_dataloader), "-".join([str('%.9f'%itm) for itm in sorted(list(set(optimizer.get_lr())))]),
-                            float(loss),
+                            loss_for_log,
                             (time.time() - start_time) / (log_step * args.gradient_accumulation_steps),
                             data_time/(log_step * args.gradient_accumulation_steps))
                 start_time = time.time()
