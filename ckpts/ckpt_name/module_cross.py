@@ -221,13 +221,14 @@ class ResidualAttentionBlock_Gate(nn.Module):
             ("cross_proj", nn.Linear(d_model * 4, d_model, bias = False))
         ]))
         
+        # Modified: Input dimension changed from d_model*2 to d_model*3 (video + audio + text)
         self.attn_gate = nn.Sequential(OrderedDict([
-            ("ag_fc", nn.Linear(int(d_model * 2), int(d_model * 0.5), bias = False)),
+            ("ag_fc", nn.Linear(int(d_model * 3), int(d_model * 0.5), bias = False)),
             ("ag_gelu", QuickGELU()),
             ("ag_proj", nn.Linear(int(d_model * 0.5), 1, bias = False))
         ]))
         self.ff_gate = nn.Sequential(OrderedDict([
-            ("fg_fc", nn.Linear(int(d_model * 2), int(d_model * 0.5), bias = False)),
+            ("fg_fc", nn.Linear(int(d_model * 3), int(d_model * 0.5), bias = False)),
             ("fg_gelu", QuickGELU()),
             ("fg_proj", nn.Linear(int(d_model * 0.5), 1, bias = False))
         ]))
@@ -253,9 +254,12 @@ class ResidualAttentionBlock_Gate(nn.Module):
 
     
     def forward(self, para_tuple: tuple):
-        x, v, attn_mask, attn_gate_list, ff_gate_list= para_tuple
-        attn_gate = self.attn_gate(torch.cat((x.mean(dim=0),v.mean(dim=0)),1)).tanh()
-        ff_gate = self.ff_gate(torch.cat((x.mean(dim=0),v.mean(dim=0)),1)).tanh()        
+        # Modified: Added text embedding (t) to the input tuple
+        x, v, t, attn_mask, attn_gate_list, ff_gate_list = para_tuple
+        
+        # Gating functions now use video (x), audio (v), and text (t) embeddings
+        attn_gate = self.attn_gate(torch.cat((x.mean(dim=0), v.mean(dim=0), t.mean(dim=0)), 1)).tanh()
+        ff_gate = self.ff_gate(torch.cat((x.mean(dim=0), v.mean(dim=0), t.mean(dim=0)), 1)).tanh()        
         
 
         x = x + self.cross_attention(self.ln_3(x), v, attn_mask/100) * attn_gate
@@ -268,7 +272,7 @@ class ResidualAttentionBlock_Gate(nn.Module):
         ff_gate_list.append(ff_gate.view(-1))
 
         
-        return (x, v, attn_mask, attn_gate_list, ff_gate_list)
+        return (x, v, t, attn_mask, attn_gate_list, ff_gate_list)
 
 ### Transformer_Gate denotes Gated_Fusion_Transformer in the paper. ###
 class Transformer_Gate(nn.Module):
@@ -278,10 +282,19 @@ class Transformer_Gate(nn.Module):
         self.layers = layers
         self.resblocks = nn.Sequential(*[ResidualAttentionBlock_Gate(width, heads) for _ in range(layers)])
         
-    def forward(self, q: torch.Tensor, v: torch.Tensor,  attn_mask=None):
-        attn_gate_list=[]
-        ff_gate_list =[]
-        return self.resblocks((q, v, attn_mask, attn_gate_list, ff_gate_list))#[0] 
+    def forward(self, q: torch.Tensor, v: torch.Tensor, t: torch.Tensor, attn_mask=None):
+        """
+        Args:
+            q: video embedding (query)
+            v: audio embedding (value)
+            t: text embedding (for gating function)
+            attn_mask: attention mask
+        Returns:
+            Tuple of (output, audio, text, attn_mask, attn_gate_list, ff_gate_list)
+        """
+        attn_gate_list = []
+        ff_gate_list = []
+        return self.resblocks((q, v, t, attn_mask, attn_gate_list, ff_gate_list)) 
 
 class CrossEmbeddings(nn.Module):
     """Construct the embeddings from word, position and token_type embeddings.
