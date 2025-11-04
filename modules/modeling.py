@@ -342,27 +342,24 @@ class CLIP4Clip(CLIP4ClipPreTrainedModel):
             audio = F.interpolate(audio.unsqueeze(1), size=(384, 384), mode='bilinear', align_corners=False)
         audio = audio.squeeze(1)
 
-        # Process audio in smaller chunks to avoid OOM during evaluation
+        # Always process audio in very small chunks to avoid OOM
         batch_size = audio.shape[0]
-        if batch_size > 4:  # Only chunk if batch is larger than 4
-            chunk_size = 4  # Process 4 audios at a time (conservative)
-            audio_hidden_list = []
+        chunk_size = 2  # Process only 2 audios at a time (most conservative)
+        audio_hidden_list = []
+        
+        for i in range(0, batch_size, chunk_size):
+            end_idx = min(i + chunk_size, batch_size)
+            audio_chunk = audio[i:end_idx]
+            audio_hidden_chunk = self.clip.encode_audio(audio_chunk).float()
+            audio_hidden_list.append(audio_hidden_chunk.cpu())  # Move to CPU immediately
             
-            for i in range(0, batch_size, chunk_size):
-                end_idx = min(i + chunk_size, batch_size)
-                audio_chunk = audio[i:end_idx]
-                audio_hidden_chunk = self.clip.encode_audio(audio_chunk).float()
-                audio_hidden_list.append(audio_hidden_chunk)
-                
-                # Free memory immediately
-                del audio_chunk, audio_hidden_chunk
-                torch.cuda.empty_cache()
-            
-            audio_hidden = torch.cat(audio_hidden_list, dim=0)
-            del audio_hidden_list
-        else:
-            # Small batch, process directly
-            audio_hidden = self.clip.encode_audio(audio).float()
+            # Free GPU memory immediately
+            del audio_chunk, audio_hidden_chunk
+            torch.cuda.empty_cache()
+        
+        # Concatenate on CPU then move to GPU
+        audio_hidden = torch.cat(audio_hidden_list, dim=0).to(audio.device)
+        del audio_hidden_list
         
         return audio_hidden
 
