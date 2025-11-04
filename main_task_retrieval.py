@@ -727,20 +727,7 @@ def main():
             if args.local_rank == 0:
                 logger.info("Epoch %d/%s Finished, Train Loss: %f", epoch + 1, args.epochs, tr_loss)
                 output_model_file = save_model(epoch, args, model, optimizer, tr_loss, type_name="")
-
-
-                # Run on val dataset, this process is *TIME-consuming*.
-                logger.info("Eval on val dataset")
-
-                R1 = eval_epoch(args, model, test_dataloader, device, n_gpu)
-                if best_score <= R1:
-                    best_score = R1
-                    best_output_model_file = output_model_file
-                logger.info("The best model is: {}, the R1 is: {:.4f}".format(best_output_model_file, best_score))
-        ## Uncomment if want to test on the best checkpoint
-        # if args.local_rank == 0:
-        #     model = load_model(-1, args, n_gpu, device, model_file=best_output_model_file)
-        #     eval_epoch(args, model, test_dataloader, device, n_gpu)
+                logger.info("Model saved: {}".format(output_model_file))
 
     elif args.do_eval:
         if args.local_rank == 0:
