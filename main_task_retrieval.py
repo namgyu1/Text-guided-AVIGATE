@@ -361,8 +361,11 @@ def _run_on_single_gpu(model, batch_list_t, batch_list_v, batch_sequence_output_
     """
     Modified: Now video embedding is computed on-the-fly for each text-video pair
     since gating function requires text embedding.
+    Video tensors are moved from CPU to GPU only when needed to save GPU memory.
     """
     sim_matrix = []
+    device = next(model.parameters()).device
+    
     for idx1, b1 in enumerate(batch_list_t):
         input_mask, segment_ids, *_tmp = b1
         sequence_output = batch_sequence_output_list[idx1]
@@ -373,6 +376,10 @@ def _run_on_single_gpu(model, batch_list_t, batch_list_v, batch_sequence_output_
         for idx2, b2 in enumerate(batch_list_v):
             video, video_mask, *_tmp = b2
             audio_output = batch_audio_output_list[idx2]
+            
+            # Move video from CPU to GPU only when needed
+            video = video.to(device)
+            video_mask = video_mask.to(device)
             
             # Compute visual_output on-the-fly (can't cache anymore due to text dependency)
             visual_output = model.get_visual_output(video, video_mask)
@@ -386,7 +393,13 @@ def _run_on_single_gpu(model, batch_list_t, batch_list_v, batch_sequence_output_
             each_row.append(b1b2_logits)
             each_attn_gate_row.append(b1b2_attn)
             each_ff_gate_row.append(b1b2_ff)
-
+            
+            # Free GPU memory immediately after use
+            del video, video_mask, visual_output
+            
+        # Clear cache after each text query
+        torch.cuda.empty_cache()
+        
         each_row = np.concatenate(tuple(each_row), axis=-1)
         sim_matrix.append(each_row)
     return sim_matrix, each_attn_gate_row, each_ff_gate_row
@@ -466,10 +479,14 @@ def eval_epoch(args, model, test_dataloader, device, n_gpu):
 
                 if len(filter_inds) > 0:
                     video, video_mask = video[filter_inds, ...], video_mask[filter_inds, ...]
-                    # Changed: Store raw video instead of visual_output
-                    batch_list_v.append((video, video_mask,))
+                    # Changed: Store raw video on CPU instead of GPU
+                    batch_list_v.append((video.cpu(), video_mask.cpu(),))
                     audio_output = model.get_audio_output(audio[filter_inds, ...])
                     batch_audio_output_list.append(audio_output)
+                    
+                    # Free GPU memory
+                    del video, video_mask
+                    
                 total_video_num += b
             else:
                 # Changed: Only get sequence output, keep raw video for later
@@ -479,9 +496,14 @@ def eval_epoch(args, model, test_dataloader, device, n_gpu):
                 batch_sequence_output_list.append(sequence_output)
                 batch_list_t.append((input_mask, segment_ids,))
 
-                # Changed: Store raw video and video_mask instead of visual_output
-                batch_list_v.append((video, video_mask,))
+                # Changed: Store raw video on CPU to save GPU memory
+                batch_list_v.append((video.cpu(), video_mask.cpu(),))
                 batch_audio_output_list.append(audio_output)
+                
+                # Clear GPU memory immediately
+                del video, video_mask, audio
+                if bid % 10 == 0:
+                    torch.cuda.empty_cache()
 
             print("{}/{}\r".format(bid, len(test_dataloader)), end="")
 

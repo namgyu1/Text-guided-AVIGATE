@@ -336,7 +336,7 @@ class CLIP4Clip(CLIP4ClipPreTrainedModel):
         visual_hidden = visual_hidden.view(bs_pair, -1, visual_hidden.size(-1))
         return visual_hidden
     
-    def get_audio_output(self,audio):
+    def get_audio_output(self, audio):
         audio = audio.squeeze(1)
         if audio.shape[-1] != 384 or audio.shape[-2] != 384:
             audio = F.interpolate(audio.unsqueeze(1), size=(384, 384), mode='bilinear', align_corners=False)
