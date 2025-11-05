@@ -265,8 +265,8 @@ class ResidualAttentionBlock_Gate(nn.Module):
         print(f"DEBUG after mean - x_mean: {x_mean.shape}, v_mean: {v_mean.shape}, t_mean: {t_mean.shape}")
         
         # Gating functions now use video (x), audio (v), and text (t) embeddings
-        attn_gate = self.attn_gate(torch.cat((x_mean, v_mean, t_mean), 1)).tanh()
-        ff_gate = self.ff_gate(torch.cat((x_mean, v_mean, t_mean), 1)).tanh()        
+        attn_gate = self.attn_gate(torch.cat((x_mean, v_mean, t_mean), dim=1)).tanh()
+        ff_gate = self.ff_gate(torch.cat((x_mean, v_mean, t_mean), dim=1)).tanh()        
 
         x = x + self.cross_attention(self.ln_3(x), v, attn_mask/100) * attn_gate
         x = x + self.cross_ff(self.ln_4(x)) * ff_gate
