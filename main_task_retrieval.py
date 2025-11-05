@@ -367,7 +367,7 @@ def _run_on_single_gpu(model, batch_list_t, batch_list_v, batch_sequence_output_
     device = next(model.parameters()).device
     
     for idx1, b1 in enumerate(batch_list_t):
-        input_mask, segment_ids, *_tmp = b1
+        input_mask_orig, segment_ids, *_tmp = b1
         # Get sequence output for current text batch
         sequence_output_batch = batch_sequence_output_list[idx1]
         # sequence_output_batch shape: [text_batch_size, seq_len, dim]
@@ -396,6 +396,10 @@ def _run_on_single_gpu(model, batch_list_t, batch_list_v, batch_sequence_output_
             text_batch_size = sequence_output_batch.size(0)
             video_batch_size = visual_output.size(0)
             
+            # Start with original values for each iteration
+            sequence_output_to_use = sequence_output_batch
+            input_mask = input_mask_orig
+            
             if text_batch_size != video_batch_size:
                 # Expand to match the larger batch size
                 if text_batch_size > video_batch_size:
@@ -405,10 +409,10 @@ def _run_on_single_gpu(model, batch_list_t, batch_list_v, batch_sequence_output_
                     video_mask = video_mask.repeat(text_batch_size, 1)
                 else:
                     # Repeat text to match video batch size
-                    sequence_output_batch = sequence_output_batch.repeat(video_batch_size, 1, 1)
-                    input_mask = input_mask.repeat(video_batch_size, 1)
+                    sequence_output_to_use = sequence_output_batch.repeat(video_batch_size, 1, 1)
+                    input_mask = input_mask_orig.repeat(video_batch_size, 1)
             
-            b1b2_logits, gate_tuple,*_tmp = model.get_similarity_logits(sequence_output_batch, visual_output, audio_output, input_mask, video_mask,
+            b1b2_logits, gate_tuple,*_tmp = model.get_similarity_logits(sequence_output_to_use, visual_output, audio_output, input_mask, video_mask,
                                                                      loose_type=model.loose_type)
             b1b2_logits = b1b2_logits.cpu().detach().numpy()
             b1b2_attn = gate_tuple[0].cpu().detach().numpy()
