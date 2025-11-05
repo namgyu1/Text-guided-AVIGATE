@@ -368,7 +368,10 @@ def _run_on_single_gpu(model, batch_list_t, batch_list_v, batch_sequence_output_
     
     for idx1, b1 in enumerate(batch_list_t):
         input_mask, segment_ids, *_tmp = b1
-        sequence_output = batch_sequence_output_list[idx1]
+        # Get sequence output for current text batch
+        sequence_output_batch = batch_sequence_output_list[idx1]
+        # sequence_output_batch shape: [text_batch_size, seq_len, dim]
+        
         each_row = []
         each_attn_gate_row = []
         each_ff_gate_row = []
@@ -376,6 +379,8 @@ def _run_on_single_gpu(model, batch_list_t, batch_list_v, batch_sequence_output_
         for idx2, b2 in enumerate(batch_list_v):
             video, video_mask, *_tmp = b2
             audio_output = batch_audio_output_list[idx2]
+            # video shape: [video_batch_size, frames, dim]
+            # audio_output shape: [video_batch_size, audio_seq, dim]
             
             # Move video from CPU to GPU only when needed
             video = video.to(device)
@@ -383,8 +388,27 @@ def _run_on_single_gpu(model, batch_list_t, batch_list_v, batch_sequence_output_
             
             # Compute visual_output on-the-fly (can't cache anymore due to text dependency)
             visual_output = model.get_visual_output(video, video_mask)
+            # visual_output shape: [video_batch_size, frames, dim]
             
-            b1b2_logits, gate_tuple,*_tmp = model.get_similarity_logits(sequence_output, visual_output, audio_output, input_mask, video_mask,
+            # get_similarity_logits expects matching batch sizes
+            # If text_batch > video_batch, need to expand video/audio
+            # If video_batch > text_batch, need to expand text
+            text_batch_size = sequence_output_batch.size(0)
+            video_batch_size = visual_output.size(0)
+            
+            if text_batch_size != video_batch_size:
+                # Expand to match the larger batch size
+                if text_batch_size > video_batch_size:
+                    # Repeat video/audio to match text batch size
+                    visual_output = visual_output.repeat(text_batch_size, 1, 1)
+                    audio_output = audio_output.repeat(text_batch_size, 1, 1)
+                    video_mask = video_mask.repeat(text_batch_size, 1)
+                else:
+                    # Repeat text to match video batch size
+                    sequence_output_batch = sequence_output_batch.repeat(video_batch_size, 1, 1)
+                    input_mask = input_mask.repeat(video_batch_size, 1)
+            
+            b1b2_logits, gate_tuple,*_tmp = model.get_similarity_logits(sequence_output_batch, visual_output, audio_output, input_mask, video_mask,
                                                                      loose_type=model.loose_type)
             b1b2_logits = b1b2_logits.cpu().detach().numpy()
             b1b2_attn = gate_tuple[0].cpu().detach().numpy()
