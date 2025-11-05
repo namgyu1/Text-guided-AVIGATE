@@ -258,11 +258,11 @@ class ResidualAttentionBlock_Gate(nn.Module):
         x, v, t, attn_mask, attn_gate_list, ff_gate_list = para_tuple
         
         # DEBUG: Print shapes to understand the tensor dimensions
-        print(f"DEBUG x.shape: {x.shape}, v.shape: {v.shape}, t.shape: {t.shape}")
+        #print(f"DEBUG x.shape: {x.shape}, v.shape: {v.shape}, t.shape: {t.shape}")
         x_mean = x.mean(dim=0)
         v_mean = v.mean(dim=0)
         t_mean = t.mean(dim=0)
-        print(f"DEBUG after mean - x_mean: {x_mean.shape}, v_mean: {v_mean.shape}, t_mean: {t_mean.shape}")
+        #print(f"DEBUG after mean - x_mean: {x_mean.shape}, v_mean: {v_mean.shape}, t_mean: {t_mean.shape}")
         
         # Gating functions now use video (x), audio (v), and text (t) embeddings
         attn_gate = self.attn_gate(torch.cat((x_mean, v_mean, t_mean), dim=1)).tanh()
