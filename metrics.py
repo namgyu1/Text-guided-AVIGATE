@@ -7,12 +7,24 @@ import numpy as np
 import torch
 
 def compute_metrics(x):
+    # Safety check for NaN or inf
+    if np.isnan(x).any() or np.isinf(x).any():
+        print(f"WARNING: Found NaN or inf in similarity matrix! NaN: {np.isnan(x).sum()}, inf: {np.isinf(x).sum()}")
+        x = np.nan_to_num(x, nan=-1e9, posinf=1e9, neginf=-1e9)
+    
     sx = np.sort(-x, axis=1)
     d = np.diag(-x)
     d = d[:, np.newaxis]
     ind = sx - d
     ind = np.where(ind == 0)
     ind = ind[1]
+    
+    # Safety check for empty results
+    if len(ind) == 0:
+        print("ERROR: No valid matches found in similarity matrix!")
+        print(f"Matrix shape: {x.shape}, min: {x.min():.4f}, max: {x.max():.4f}")
+        return {'R1': 0.0, 'R5': 0.0, 'R10': 0.0, 'MR': 0, 'MedianR': 0, 'MeanR': 0, 'cols': []}
+    
     metrics = {}
     metrics['R1'] = float(np.sum(ind == 0)) * 100 / len(ind)
     metrics['R5'] = float(np.sum(ind < 5)) * 100 / len(ind)

@@ -523,21 +523,21 @@ class CLIP4Clip(CLIP4ClipPreTrainedModel):
             torch.distributed.barrier()
             
         qa_output_global = self._mean_pooling_for_similarity_visual(qa_output, audio_mask)
-        qa_output_global = qa_output_global / qa_output_global.norm(dim=-1, keepdim=True)
+        qa_output_global = qa_output_global / (qa_output_global.norm(dim=-1, keepdim=True) + 1e-8)
 
         av_fused_output = fusion_output#[:, qa_output.shape[1]:]
-        av_fused_output = av_fused_output / av_fused_output.norm(dim=-1, keepdim=True)
+        av_fused_output = av_fused_output / (av_fused_output.norm(dim=-1, keepdim=True) + 1e-8)
 
         av_fused_output_global = self._mean_pooling_for_similarity_visual(av_fused_output, video_mask)
-        av_fused_output_global = av_fused_output_global / av_fused_output_global.norm(dim=-1, keepdim=True)
+        av_fused_output_global = av_fused_output_global / (av_fused_output_global.norm(dim=-1, keepdim=True) + 1e-8)
 
         visual_output_local = visual_output_original#[:, qa_output.shape[1]:]
-        visual_output_local = visual_output_local / visual_output_local.norm(dim=-1, keepdim=True)
+        visual_output_local = visual_output_local / (visual_output_local.norm(dim=-1, keepdim=True) + 1e-8)
 
         visual_output_global = self._mean_pooling_for_similarity_visual(visual_output_local, video_mask)
-        visual_output_global = visual_output_global / visual_output_global.norm(dim=-1, keepdim=True)
+        visual_output_global = visual_output_global / (visual_output_global.norm(dim=-1, keepdim=True) + 1e-8)
 
-        sequence_output_ = sequence_output_ / sequence_output_.norm(dim=-1, keepdim=True)
+        sequence_output_ = sequence_output_ / (sequence_output_.norm(dim=-1, keepdim=True) + 1e-8)
 
 
         # Clamp logit_scale to prevent numerical instability in softmax

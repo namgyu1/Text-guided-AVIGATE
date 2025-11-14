@@ -235,11 +235,16 @@ class ResidualAttentionBlock_Gate(nn.Module):
         ]))
         
         # New: Query fusion gate for multi-modal query (video + text fusion)
+        # Initialize with small weights to prevent disrupting pretrained features
         self.query_gate = nn.Sequential(OrderedDict([
             ("qg_fc", nn.Linear(int(d_model * 3), int(d_model * 0.5), bias = False)),
             ("qg_gelu", QuickGELU()),
             ("qg_proj", nn.Linear(int(d_model * 0.5), 1, bias = False))
         ]))
+        # Initialize query_gate to output near-zero values initially
+        # This preserves pretrained video features during early training
+        nn.init.normal_(self.query_gate[0].weight, mean=0.0, std=0.01)
+        nn.init.normal_(self.query_gate[2].weight, mean=0.0, std=0.01)
         
         self.ln_3 = LayerNorm(d_model)
         self.ln_4 = LayerNorm(d_model)        
@@ -277,9 +282,14 @@ class ResidualAttentionBlock_Gate(nn.Module):
         t_expanded = t_pooled.expand(x.size(0), -1, -1)
         
         # Learn gate weight for video-text fusion
+        # tanh output: [-1, 1], start small due to initialization
         query_gate_weight = self.query_gate(torch.cat((x_mean, v_mean, t_mean), dim=1)).tanh()
         
-        # Weighted sum: video  + text * (gate)
+        # Scale down the gate to prevent sudden feature changes
+        # This allows gradual integration of text information
+        query_gate_weight = query_gate_weight * 0.1  # Scale to [-0.1, 0.1]
+        
+        # Weighted sum: video + text * (small_gate)
         fused_query = x + t_expanded * query_gate_weight
         
         # --- Gating functions for audio fusion ---
