@@ -234,6 +234,9 @@ class ResidualAttentionBlock_Gate(nn.Module):
             ("fg_proj", nn.Linear(int(d_model * 0.5), 1, bias = False))
         ]))
         
+        nn.init.normal_(self.attn_gate[0].weight, mean=0.0, std=0.01)
+        nn.init.normal_(self.attn_gate[2].weight, mean=0.0, std=0.01)
+        
         # New: Query fusion gate for multi-modal query (video + text fusion)
         # Initialize with small weights to prevent disrupting pretrained features
         self.query_gate = nn.Sequential(OrderedDict([
