@@ -241,10 +241,6 @@ class ResidualAttentionBlock_Gate(nn.Module):
             ("qg_gelu", QuickGELU()),
             ("qg_proj", nn.Linear(int(d_model * 0.5), 1, bias = False))
         ]))
-        # Initialize query_gate to output near-zero values initially
-        # This preserves pretrained video features during early training
-        nn.init.normal_(self.query_gate[0].weight, mean=0.0, std=0.01)
-        nn.init.normal_(self.query_gate[2].weight, mean=0.0, std=0.01)
         
         self.ln_3 = LayerNorm(d_model)
         self.ln_4 = LayerNorm(d_model)        
