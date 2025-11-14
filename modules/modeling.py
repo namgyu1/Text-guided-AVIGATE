@@ -540,7 +540,11 @@ class CLIP4Clip(CLIP4ClipPreTrainedModel):
         sequence_output_ = sequence_output_ / sequence_output_.norm(dim=-1, keepdim=True)
 
 
-        logit_scale =self.clip.logit_scale.exp()
+        # Clamp logit_scale to prevent numerical instability in softmax
+        # Original CLIP uses exp(logit_scale), but unbounded growth causes NaN
+        # Limit: exp(4.6) = 100 is sufficient for contrastive learning
+        logit_scale = self.clip.logit_scale.exp()
+        logit_scale = torch.clamp(logit_scale, max=100)
         lamb = self.lambda_
 
 

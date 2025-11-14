@@ -270,25 +270,25 @@ class ResidualAttentionBlock_Gate(nn.Module):
         v_mean = v.mean(dim=0)
         t_mean = t.mean(dim=0)
         
-        # --- Multi-Modal Query Fusion ---
-        # Create fused query by combining video and text embeddings
-        # query_gate_weight: 0~1 value (sigmoid activation)
-        query_gate_weight = self.query_gate(torch.cat((x_mean, v_mean, t_mean), dim=1)).sigmoid()
-        # Clamp to prevent extreme values (0.05 ~ 0.95)
-        query_gate_weight = torch.clamp(query_gate_weight, min=0.05, max=0.95)
-        # Fused query = video * query_gate + text * (1 - query_gate)
-        fused_query = x * query_gate_weight + t * (1 - query_gate_weight)
+        # --- Multi-Modal Query Fusion (Text Pooling + Weighted Sum) ---
+        # Pool text tokens [20, batch, dim] -> [1, batch, dim]
+        t_pooled = t.mean(dim=0, keepdim=True)
+        # Expand to match video frames: [1, batch, dim] -> [12, batch, dim]
+        t_expanded = t_pooled.expand(x.size(0), -1, -1)
+        
+        # Learn gate weight for video-text fusion
+        query_gate_weight = self.query_gate(torch.cat((x_mean, v_mean, t_mean), dim=1)).tanh()
+        
+        # Weighted sum: video  + text * (gate)
+        fused_query = x + t_expanded * query_gate_weight
         
         # --- Gating functions for audio fusion ---
         # Gating functions now use video (x), audio (v), and text (t) embeddings
         attn_gate = self.attn_gate(torch.cat((x_mean, v_mean, t_mean), dim=1)).tanh()
         ff_gate = self.ff_gate(torch.cat((x_mean, v_mean, t_mean), dim=1)).tanh()
-        # Clamp to prevent extreme values (-0.9 ~ 0.9)
-        attn_gate = torch.clamp(attn_gate, min=-0.9, max=0.9)
-        ff_gate = torch.clamp(ff_gate, min=-0.9, max=0.9)
 
         # --- Cross-modal fusion with audio ---
-        # Use fused_query instead of original video embedding for cross attention
+        # Use fused_query (video + pooled text) for cross attention
         x = x + self.cross_attention(self.ln_3(fused_query), v, attn_mask/100) * attn_gate
         x = x + self.cross_ff(self.ln_4(x)) * ff_gate
         
