@@ -252,7 +252,7 @@ def prep_optimizer(args, model, num_train_optimization_steps, device, n_gpu, loc
 
     return optimizer, scheduler, model
 
-def save_model(epoch, args, model, optimizer, tr_loss, scheduler=None, global_step=0, type_name=""):
+def save_model(epoch, args, model, optimizer, tr_loss, global_step=0, type_name=""):
     # Only save the model it-self
     model_to_save = model.module if hasattr(model, 'module') else model
     output_model_file = os.path.join(
@@ -260,17 +260,11 @@ def save_model(epoch, args, model, optimizer, tr_loss, scheduler=None, global_st
     optimizer_state_file = os.path.join(
         args.output_dir, "pytorch_opt.bin.{}{}".format("" if type_name=="" else type_name+".", epoch+global_step))
     torch.save(model_to_save.state_dict(), output_model_file)
-    
-    checkpoint = {
-        'epoch': epoch,
-        'global_step': global_step,
-        'optimizer_state_dict': optimizer.state_dict(),
-        'loss': tr_loss,
-    }
-    if scheduler is not None:
-        checkpoint['scheduler_state_dict'] = scheduler.state_dict()
-    
-    torch.save(checkpoint, optimizer_state_file)
+    torch.save({
+            'epoch': epoch,
+            'optimizer_state_dict': optimizer.state_dict(),
+            'loss': tr_loss,
+            }, optimizer_state_file)
     logger.info("Model saved to %s", output_model_file)
     logger.info("Optimizer saved to %s", optimizer_state_file)
     return output_model_file
@@ -362,14 +356,6 @@ def train_epoch(epoch, args, model, train_dataloader, device, n_gpu, optimizer, 
                 torch.clamp_(model.clip.logit_scale.data, max=np.log(100))
 
             global_step += 1
-            
-            # Auto-save checkpoint every 200 steps for safety
-            if global_step % 200 == 0 and local_rank == 0:
-                checkpoint_name = f"step_{global_step}"
-                current_loss = total_loss / max(1, step + 1)
-                save_model(epoch, args, model, optimizer, current_loss, scheduler=scheduler, 
-                          global_step=global_step, type_name=checkpoint_name)
-                logger.info(f"Checkpoint saved at step {global_step}")
 
             if global_step % log_step == 0 and local_rank == 0:
                 logger.info("Epoch: %d/%s, Step: %d/%d, Lr: %s, Loss: %f, Time/step: %f, DTime/step: %f", epoch + 1,
@@ -818,7 +804,7 @@ def main():
                                                scheduler, global_step, local_rank=args.local_rank)
             if args.local_rank == 0:
                 logger.info("Epoch %d/%s Finished, Train Loss: %f", epoch + 1, args.epochs, tr_loss)
-                output_model_file = save_model(epoch, args, model, optimizer, tr_loss, scheduler=scheduler, global_step=global_step, type_name="")
+                output_model_file = save_model(epoch, args, model, optimizer, tr_loss, scheduler=scheduler, type_name="")
                 logger.info("Model saved: {}".format(output_model_file))
 
     elif args.do_eval:
