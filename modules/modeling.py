@@ -158,10 +158,11 @@ def _LSE_real(x, lambda_, mask=None, d=1):
 
 def _safe_l2_normalize(x, dim=-1, eps=1e-6):
     norm = x.norm(dim=dim, keepdim=True)
-    norm = torch.nan_to_num(norm, nan=0.0, posinf=0.0, neginf=0.0)
-    denom = norm.clamp_min(eps)
+    finite_norm = torch.where(torch.isfinite(norm), norm, torch.zeros_like(norm))
+    denom = finite_norm.clamp_min(eps)
     normalized = x / denom
-    return torch.nan_to_num(normalized)
+    normalized = torch.where(torch.isfinite(normalized), normalized, torch.zeros_like(normalized))
+    return normalized
 
 
 def show_log(task_config, info):
