@@ -12,9 +12,9 @@ On MSRVTT (CLIP-ViT B/32):
 | :--- | :---: | :---: | :---: |
 | Original AVIGATE (CVPR 2025) | 50.2% | 74.3% | 83.2% |
 | GAID (Recent SOTA) | 55.0% | 83.0% | 89.9% |
-| **Text-Guided AVIGATE (Ours)** | **63.9%** | **88.0%** | **93.1%** |
+| **Text-Guided AVIGATE (Ours)** | **65.6%** | **89.1%** | **94.2%** |
 
-*(This work achieved a **+13.7%p** improvement in R@1 over the original SOTA baseline.)*
+*(This work achieved a **+15.4%p** improvement in R@1 over the original SOTA baseline.)*
 
 ---
 
