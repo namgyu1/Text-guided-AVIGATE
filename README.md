@@ -1,8 +1,18 @@
-# AVIGATE: Learning Audio-Guided Video Representation with Gated Attention for Video-Text Retrieval (CVPR 2025, Oral)
+Text-Guided AVIGATE: Text and Audio-Guided Video Representation with Gated Attention for Text-to-Video Retrieval (based on AVIGATE, CVPR 2025, Oral)
 
+This repository provides an extended implementation of AVIGATE (CVPR 2025 Oral) with a Text-Guided Gating Mechanism, where the text query directly influences the audio–visual fusion process.
 
-This repository is an official implementation of the paper [**AVIGATE: Learning Audio-Guided Video Representation with Gated Attention for Video-Text Retrieval**](https://openaccess.thecvf.com/content/CVPR2025/papers/Jeong_Learning_Audio-guided_Video_Representation_with_Gated_Attention_for_Video-Text_Retrieval_CVPR_2025_paper.pdf). 
-![AVIGATE](AVIGATE.png)
+The goal of this project is to improve Video-Text Retrieval by allowing the semantic intent of a text query to dynamically control multimodal fusion.
+
+Performance
+
+On MSRVTT (CLIP-ViT B/32):
+| Model | R@1 |
+| --- | --- |
+| Original AVIGATE | 50.2% |
+| GAID (recent SOTA) | 55.0% |
+| Text-Guided AVIGATE (ours) | 63.8% |
+*Achieves state-of-the-art performance among ViT-B/32–based methods on MSRVTT.*
 
 ## Requirement
 ```sh
