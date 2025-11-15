@@ -38,7 +38,7 @@ To solve this, I redesigned the Gated Fusion Transformer to be **Query-Aware**, 
 2.  **Text-Injected MHA Query :**
     The `MHA` (Multi-Head Attention) block was modified. The Text Embedding (T) is now injected directly into the Visual Frame Query. This allows the model to look for text and video-relevant audio features.
 
-3.  **Gated Text Injection (Gate for L-Injection):**
+3.  **Gated Text Injection (Gate for Text-Injection):**
     To prevent the text query from overpowering the visual features, a **new MLP gate** was implemented. This gate dynamically controls the *amount* of text information (T) injected into the MHA Query, based on the context of all three modalities (T, V, and A).
 
 ---
