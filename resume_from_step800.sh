@@ -12,8 +12,8 @@ CKPT_NAME=TAVIGATE_L2
 Tau=1.0
 
 # Resume from step 800 checkpoint
-STEP_CKPT=800
-EPOCH_NUM=802
+STEP_CKPT=1000
+EPOCH_NUM=1002
 
 echo "Resuming training from step ${STEP_CKPT} checkpoint"
 echo "Loading model: ckpts/${CKPT_NAME}/pytorch_model.bin.step_${STEP_CKPT}.${EPOCH_NUM}"
