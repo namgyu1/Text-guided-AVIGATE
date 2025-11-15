@@ -1,6 +1,6 @@
 Text-Guided AVIGATE: Text and Audio-Guided Video Representation with Gated Attention for Text-to-Video Retrieval (based on AVIGATE, CVPR 2025, Oral)
 
-This repository provides an extended implementation of AVIGATE (CVPR 2025 Oral) with a Text-Guided Gating Mechanism, where the text query directly influences the audio–visual fusion process.
+This repository provides an extended implementation of AVIGATE (CVPR 2025 Oral) with a Text-Guided Gating Mechanism and Gated Fusion Transformer, where the text query directly influences the audio–visual fusion process.
 
 The goal of this project is to improve Video-Text Retrieval by allowing the semantic intent of a text query to dynamically control multimodal fusion.
 
