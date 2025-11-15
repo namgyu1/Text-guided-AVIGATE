@@ -22,24 +22,24 @@ On MSRVTT (CLIP-ViT B/32):
 
 The original AVIGATE model achieves SOTA by selectively fusing audio (A) and visual (V) information using a Gated Fusion Transformer.
 
-However, this fusion process is **'Text-Agnostic'**. The gating mechanism only considers the relationship *within* the video (V-A interaction) and **completely ignores the text query (T)**.
+However, this fusion process is **Text-Agnostic**. The gating mechanism only considers the relationship *within* the video (V-A interaction) and **completely ignores the text query (T)**.
 
 This is suboptimal. The relevance of an audio cue is highly dependent on the text query.
 
 ## 2. Solution: 'Query-Aware' (Text-Guided) Architecture
 
-To solve this, I redesigned the Gated Fusion Transformer to be **'Query-Aware'**, making the text query (T) an active participant in the fusion process at multiple levels.
+To solve this, I redesigned the Gated Fusion Transformer to be **Query-Aware**, making the text query (T) an active participant in the fusion process at multiple levels.
 
 ### Key Architectural Contributions:
 
 1.  **Text-Conditioned Gating Function :**
-    The primary `Gating Function` (`G`) was modified to accept the Text Embedding (T) as an additional condition. This allows the model to decide *how much* audio to fuse based on *what* the user is searching for (the semantic intent of T).
+    The `Gating Function` was modified to accept the Text Embedding (T) as an additional condition. This allows the model to decide *how much* audio to fuse based on *what* the user is searching for (the semantic intent of T).
 
 2.  **Text-Injected MHA Query :**
-    The `MHA` (Multi-Head Attention) block was modified. The Text Embedding (T) is now injected directly into the Visual Frame Query (Q). This allows the model to look for text and video-relevant audio features.
+    The `MHA` (Multi-Head Attention) block was modified. The Text Embedding (T) is now injected directly into the Visual Frame Query. This allows the model to look for text and video-relevant audio features.
 
 3.  **Gated Text Injection (Gate for L-Injection):**
-    To prevent the text query from overpowering the visual features, a **new MLP gate** was implemented. This gate dynamically controls the *amount* of text information (T) injected into the MHA Query (Q), based on the context of all three modalities (T, V, and A).
+    To prevent the text query from overpowering the visual features, a **new MLP gate** was implemented. This gate dynamically controls the *amount* of text information (T) injected into the MHA Query, based on the context of all three modalities (T, V, and A).
 
 ---
 ## Requirement
