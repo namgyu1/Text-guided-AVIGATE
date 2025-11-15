@@ -252,21 +252,18 @@ def prep_optimizer(args, model, num_train_optimization_steps, device, n_gpu, loc
 
     return optimizer, scheduler, model
 
-def save_model(epoch, args, model, optimizer, tr_loss, global_step=0, type_name=""):
+def save_model(epoch, args, model, optimizer, tr_loss, scheduler=None, type_name=""):
     # Only save the model it-self
     model_to_save = model.module if hasattr(model, 'module') else model
     output_model_file = os.path.join(
-        args.output_dir, "pytorch_model.bin.{}{}".format("" if type_name=="" else type_name+".", epoch+global_step))
+        args.output_dir, "pytorch_model.bin.{}{}".format("" if type_name=="" else type_name+".", epoch))
     optimizer_state_file = os.path.join(
-        args.output_dir, "pytorch_opt.bin.{}{}".format("" if type_name=="" else type_name+".", epoch+global_step))
+        args.output_dir, "pytorch_opt.bin.{}{}".format("" if type_name=="" else type_name+".", epoch))
     torch.save(model_to_save.state_dict(), output_model_file)
-    torch.save({
-            'epoch': epoch,
-            'optimizer_state_dict': optimizer.state_dict(),
-            'loss': tr_loss,
-            }, optimizer_state_file)
+    torch.save(optimizer.state_dict(), optimizer_state_file)
+    if scheduler is not None:
+        torch.save(scheduler.state_dict(), optimizer_state_file.replace('pytorch_opt.bin', 'pytorch_sche.bin'))
     logger.info("Model saved to %s", output_model_file)
-    logger.info("Optimizer saved to %s", optimizer_state_file)
     return output_model_file
 
 def load_model(epoch, args, n_gpu, device, model_file=None):
