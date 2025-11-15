@@ -312,6 +312,11 @@ def train_epoch(epoch, args, model, train_dataloader, device, n_gpu, optimizer, 
         loss = model(input_ids, segment_ids, input_mask, video, video_mask, audio)
         data_time += time.time()-d_start_time
         
+        # Check for NaN loss immediately
+        if torch.isnan(loss).any():
+            logger.warning(f"NaN loss detected at step {step}! Skipping this batch.")
+            continue
+        
         # Store the original loss for logging before dividing
         loss_for_log = float(loss.mean()) if n_gpu > 1 else float(loss)
         

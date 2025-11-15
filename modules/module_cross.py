@@ -274,6 +274,18 @@ class ResidualAttentionBlock_Gate(nn.Module):
         v_mean = v.mean(dim=0)
         t_mean = t.mean(dim=0)
         
+        # DEBUG: Check for NaN in input embeddings and log details
+        if torch.isnan(x).any():
+            print(f"[NaN DEBUG] NaN detected in VIDEO embedding! Shape: {x.shape}, NaN count: {torch.isnan(x).sum().item()}")
+        if torch.isnan(v).any():
+            print(f"[NaN DEBUG] NaN detected in AUDIO embedding! Shape: {v.shape}, NaN count: {torch.isnan(v).sum().item()}")
+        if torch.isnan(t).any():
+            print(f"[NaN DEBUG] NaN detected in TEXT embedding! Shape: {t.shape}, NaN count: {torch.isnan(t).sum().item()}")
+        if torch.isnan(x).any() or torch.isnan(v).any() or torch.isnan(t).any():
+            # Return original video without fusion if inputs are corrupted
+            print(f"[NaN DEBUG] Skipping fusion due to NaN in inputs")
+            return (x, v, t, attn_mask, attn_gate_list, ff_gate_list, query_gate_list)
+        
         # --- Multi-Modal Query Fusion (Text Pooling + Weighted Sum) ---
         # Pool text tokens [20, batch, dim] -> [1, batch, dim]
         t_pooled = t.mean(dim=0, keepdim=True)
@@ -282,30 +294,76 @@ class ResidualAttentionBlock_Gate(nn.Module):
         # Video features are L2-normalized from CLIP, text should be too
         t_pooled = t_pooled / (t_pooled.norm(dim=-1, keepdim=True) + 1e-8)
         
+        # DEBUG: Check if normalization caused NaN
+        if torch.isnan(t_pooled).any():
+            print(f"[NaN DEBUG] NaN in t_pooled after normalization! norm before: {t.mean(dim=0, keepdim=True).norm(dim=-1).mean().item():.6f}")
+            t_pooled = t.mean(dim=0, keepdim=True)  # Use unnormalized version
+        
         # Expand to match video frames: [1, batch, dim] -> [12, batch, dim]
         t_expanded = t_pooled.expand(x.size(0), -1, -1)
         
         # Learn gate weight for video-text fusion
         # tanh output: [-1, 1], controls text contribution strength
-        query_gate_weight = self.query_gate(torch.cat((x_mean, v_mean, t_mean), dim=1)).tanh()
+        concat_input = torch.cat((x_mean, v_mean, t_mean), dim=1)
+        
+        # DEBUG: Check concatenated input
+        if torch.isnan(concat_input).any():
+            print(f"[NaN DEBUG] NaN in concat_input! x_mean: {torch.isnan(x_mean).any()}, v_mean: {torch.isnan(v_mean).any()}, t_mean: {torch.isnan(t_mean).any()}")
+        
+        query_gate_weight = self.query_gate(concat_input).tanh()
+        
+        # DEBUG: Check gate output
+        if torch.isnan(query_gate_weight).any():
+            print(f"[NaN DEBUG] NaN in query_gate_weight! Input stats - mean: {concat_input.mean().item():.6f}, std: {concat_input.std().item():.6f}, max: {concat_input.max().item():.6f}")
+            query_gate_weight = torch.zeros_like(query_gate_weight)
                 
         # Weighted residual: video + text * gate
         # Both x and t_expanded are normalized, so addition is safe
         fused_query = x + t_expanded * query_gate_weight
         
+        # DEBUG: Check fused query
+        if torch.isnan(fused_query).any():
+            print(f"[NaN DEBUG] NaN in fused_query! x NaN: {torch.isnan(x).any()}, t_expanded NaN: {torch.isnan(t_expanded).any()}, gate NaN: {torch.isnan(query_gate_weight).any()}")
+            print(f"[NaN DEBUG] Stats - x: {x.abs().max().item():.6f}, t: {t_expanded.abs().max().item():.6f}, gate: {query_gate_weight.abs().max().item():.6f}")
+            fused_query = x
+        
         # --- Gating functions for audio fusion ---
         # Gating functions now use video (x), audio (v), and text (t) embeddings
         attn_gate = self.attn_gate(torch.cat((x_mean, v_mean, t_mean), dim=1)).tanh()
         ff_gate = self.ff_gate(torch.cat((x_mean, v_mean, t_mean), dim=1)).tanh()
+        
+        # DEBUG: Check audio gates
+        if torch.isnan(attn_gate).any():
+            print(f"[NaN DEBUG] NaN in attn_gate!")
+            attn_gate = torch.zeros_like(attn_gate)
+        if torch.isnan(ff_gate).any():
+            print(f"[NaN DEBUG] NaN in ff_gate!")
+            ff_gate = torch.zeros_like(ff_gate)
 
         # --- Cross-modal fusion with audio ---
         # Use fused_query (video + pooled text) for cross attention
-        x = x + self.cross_attention(self.ln_3(fused_query), v, attn_mask/100) * attn_gate
+        cross_attn_out = self.cross_attention(self.ln_3(fused_query), v, attn_mask/100)
+        
+        # DEBUG: Check cross attention output
+        if torch.isnan(cross_attn_out).any():
+            print(f"[NaN DEBUG] NaN in cross_attention output!")
+            cross_attn_out = torch.zeros_like(cross_attn_out)
+        
+        x = x + cross_attn_out * attn_gate
         x = x + self.cross_ff(self.ln_4(x)) * ff_gate
         
         # --- Self-attention and feed-forward ---
         x = x + self.attention(self.ln_1(x), attn_mask=None)
+        
+        # DEBUG: Check after self-attention
+        if torch.isnan(x).any():
+            print(f"[NaN DEBUG] NaN in x after self-attention!")
+        
         x = x + self.mlp(self.ln_2(x))
+        
+        # DEBUG: Check final output
+        if torch.isnan(x).any():
+            print(f"[NaN DEBUG] NaN in FINAL OUTPUT after MLP!")
         
         # Store gate values for analysis
         attn_gate_list.append(attn_gate.view(-1))
