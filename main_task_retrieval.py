@@ -252,7 +252,7 @@ def prep_optimizer(args, model, num_train_optimization_steps, device, n_gpu, loc
 
     return optimizer, scheduler, model
 
-def save_model(epoch, args, model, optimizer, tr_loss, global_step=0, type_name=""):
+def save_model(epoch, args, model, optimizer, tr_loss, scheduler=None, global_step=0, type_name=""):
     # Only save the model it-self
     model_to_save = model.module if hasattr(model, 'module') else model
     output_model_file = os.path.join(
@@ -260,11 +260,17 @@ def save_model(epoch, args, model, optimizer, tr_loss, global_step=0, type_name=
     optimizer_state_file = os.path.join(
         args.output_dir, "pytorch_opt.bin.{}{}".format("" if type_name=="" else type_name+".", epoch+global_step))
     torch.save(model_to_save.state_dict(), output_model_file)
-    torch.save({
-            'epoch': epoch,
-            'optimizer_state_dict': optimizer.state_dict(),
-            'loss': tr_loss,
-            }, optimizer_state_file)
+    
+    checkpoint = {
+        'epoch': epoch,
+        'global_step': global_step,
+        'optimizer_state_dict': optimizer.state_dict(),
+        'loss': tr_loss,
+    }
+    if scheduler is not None:
+        checkpoint['scheduler_state_dict'] = scheduler.state_dict()
+    
+    torch.save(checkpoint, optimizer_state_file)
     logger.info("Model saved to %s", output_model_file)
     logger.info("Optimizer saved to %s", optimizer_state_file)
     return output_model_file
@@ -755,20 +761,44 @@ def main():
         # resume optimizer state besides loss to continue train
         ## ##############################################################
         resumed_epoch = 0
+        global_step = 0
         if args.resume_model:
             checkpoint = torch.load(args.resume_model, map_location='cpu')
+            
+            # DEBUG: Print checkpoint contents
+            logger.info("=== Checkpoint Info ===")
+            logger.info("Checkpoint keys: %s", list(checkpoint.keys()))
+            if 'epoch' in checkpoint:
+                logger.info("Saved epoch: %d", checkpoint['epoch'])
+            if 'global_step' in checkpoint:
+                logger.info("Saved global_step: %d", checkpoint['global_step'])
+            if 'loss' in checkpoint:
+                logger.info("Saved loss: %.6f", checkpoint['loss'])
+            logger.info("=====================")
+            
             optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
             resumed_epoch = checkpoint['epoch']+1
             resumed_loss = checkpoint['loss']
+            
+            # Resume scheduler state if available
+            if 'scheduler_state_dict' in checkpoint and scheduler is not None:
+                scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
+                logger.info("Scheduler state loaded from checkpoint")
+            
+            # Resume global_step if available
+            if 'global_step' in checkpoint:
+                global_step = checkpoint['global_step']
+                logger.info("Resumed from epoch %d, global_step %d", resumed_epoch, global_step)
+            else:
+                logger.warning("global_step not found in checkpoint, starting from 0")
 
-        global_step = 0
         for epoch in range(resumed_epoch, args.epochs):
             train_sampler.set_epoch(epoch)
             tr_loss, global_step = train_epoch(epoch, args, model, train_dataloader, device, n_gpu, optimizer,
                                                scheduler, global_step, local_rank=args.local_rank)
             if args.local_rank == 0:
                 logger.info("Epoch %d/%s Finished, Train Loss: %f", epoch + 1, args.epochs, tr_loss)
-                output_model_file = save_model(epoch, args, model, optimizer, tr_loss, type_name="")
+                output_model_file = save_model(epoch, args, model, optimizer, tr_loss, scheduler=scheduler, global_step=global_step, type_name="")
                 logger.info("Model saved: {}".format(output_model_file))
 
     elif args.do_eval:
