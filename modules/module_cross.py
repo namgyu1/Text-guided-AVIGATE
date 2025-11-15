@@ -292,12 +292,15 @@ class ResidualAttentionBlock_Gate(nn.Module):
         
         # CRITICAL: Normalize pooled text to match video feature scale
         # Video features are L2-normalized from CLIP, text should be too
-        t_pooled = t_pooled / (t_pooled.norm(dim=-1, keepdim=True) + 1e-8)
+        t_norm = t_pooled.norm(dim=-1, keepdim=True)
+        # Prevent division by very small numbers (use max instead of +epsilon)
+        t_norm_safe = torch.clamp(t_norm, min=1e-6)
+        t_pooled = t_pooled / t_norm_safe
         
         # DEBUG: Check if normalization caused NaN
         if torch.isnan(t_pooled).any():
-            print(f"[NaN DEBUG] NaN in t_pooled after normalization! norm before: {t.mean(dim=0, keepdim=True).norm(dim=-1).mean().item():.6f}")
-            t_pooled = t.mean(dim=0, keepdim=True)  # Use unnormalized version
+            print(f"[NaN DEBUG] NaN in t_pooled after normalization! norm before: {t_norm.mean().item():.6f}")
+            t_pooled = t.mean(dim=0, keepdim=True)  # Use unnormalized version as fallback
         
         # Expand to match video frames: [1, batch, dim] -> [12, batch, dim]
         t_expanded = t_pooled.expand(x.size(0), -1, -1)
@@ -310,11 +313,14 @@ class ResidualAttentionBlock_Gate(nn.Module):
         if torch.isnan(concat_input).any():
             print(f"[NaN DEBUG] NaN in concat_input! x_mean: {torch.isnan(x_mean).any()}, v_mean: {torch.isnan(v_mean).any()}, t_mean: {torch.isnan(t_mean).any()}")
         
-        query_gate_weight = self.query_gate(concat_input).tanh()
+        # Compute gate logits and clip to prevent tanh overflow
+        query_gate_logit = self.query_gate(concat_input)
+        query_gate_logit = torch.clamp(query_gate_logit, min=-10.0, max=10.0)
+        query_gate_weight = query_gate_logit.tanh()
         
         # DEBUG: Check gate output
         if torch.isnan(query_gate_weight).any():
-            print(f"[NaN DEBUG] NaN in query_gate_weight! Input stats - mean: {concat_input.mean().item():.6f}, std: {concat_input.std().item():.6f}, max: {concat_input.max().item():.6f}")
+            print(f"[NaN DEBUG] NaN in query_gate_weight! Logit stats - mean: {query_gate_logit.mean().item():.6f}, std: {query_gate_logit.std().item():.6f}, max: {query_gate_logit.abs().max().item():.6f}")
             query_gate_weight = torch.zeros_like(query_gate_weight)
                 
         # Weighted residual: video + text * gate
@@ -329,8 +335,13 @@ class ResidualAttentionBlock_Gate(nn.Module):
         
         # --- Gating functions for audio fusion ---
         # Gating functions now use video (x), audio (v), and text (t) embeddings
-        attn_gate = self.attn_gate(torch.cat((x_mean, v_mean, t_mean), dim=1)).tanh()
-        ff_gate = self.ff_gate(torch.cat((x_mean, v_mean, t_mean), dim=1)).tanh()
+        attn_gate_logit = self.attn_gate(torch.cat((x_mean, v_mean, t_mean), dim=1))
+        attn_gate_logit = torch.clamp(attn_gate_logit, min=-10.0, max=10.0)
+        attn_gate = attn_gate_logit.tanh()
+        
+        ff_gate_logit = self.ff_gate(torch.cat((x_mean, v_mean, t_mean), dim=1))
+        ff_gate_logit = torch.clamp(ff_gate_logit, min=-10.0, max=10.0)
+        ff_gate = ff_gate_logit.tanh()
         
         # DEBUG: Check audio gates
         if torch.isnan(attn_gate).any():

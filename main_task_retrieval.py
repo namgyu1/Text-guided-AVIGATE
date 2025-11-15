@@ -321,6 +321,8 @@ def train_epoch(epoch, args, model, train_dataloader, device, n_gpu, optimizer, 
         # Check for NaN loss immediately
         if torch.isnan(loss).any():
             logger.warning(f"NaN loss detected at step {step}! Skipping this batch.")
+            optimizer.zero_grad()  # CRITICAL: Clear gradients to prevent memory leak
+            torch.cuda.empty_cache()  # Release cached memory
             continue
         
         # Store the original loss for logging before dividing
@@ -336,7 +338,17 @@ def train_epoch(epoch, args, model, train_dataloader, device, n_gpu, optimizer, 
         total_loss += float(loss)
         if (step + 1) % args.gradient_accumulation_steps == 0:
 
-            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+            # Check gradient norm before clipping
+            total_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+            
+            # Log if gradient is abnormally large
+            if total_norm > 10.0 and local_rank == 0:
+                logger.warning(f"Large gradient norm at step {step}: {total_norm:.2f}")
+            
+            if torch.isnan(torch.tensor(total_norm)):
+                logger.warning(f"NaN gradient norm at step {step}! Skipping optimizer step.")
+                optimizer.zero_grad()
+                continue
 
             if scheduler is not None:
                 scheduler.step()  # Update learning rate schedule

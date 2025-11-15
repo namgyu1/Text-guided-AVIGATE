@@ -232,7 +232,9 @@ class LayerNorm(nn.LayerNorm):
 
 class QuickGELU(nn.Module):
     def forward(self, x: torch.Tensor):
-        return x * torch.sigmoid(1.702 * x)
+        # Clip input to prevent sigmoid overflow (sigmoid saturates at ±20)
+        x_clipped = torch.clamp(x, min=-20.0, max=20.0)
+        return x_clipped * torch.sigmoid(1.702 * x_clipped)
 
 
 class ResidualAttentionBlock(nn.Module):
@@ -259,8 +261,36 @@ class ResidualAttentionBlock(nn.Module):
 
     def forward(self, x_tuple:tuple):
         x, video_frame = x_tuple
-        x = x + self.attention(self.ln_1(x))
-        x = x + self.mlp(self.ln_2(x))
+        
+        # Self-attention
+        attn_out = self.attention(self.ln_1(x))
+        
+        # Check for NaN after attention
+        if torch.isnan(attn_out).any():
+            print(f"[CLIP DEBUG] NaN in attention output! Input max: {x.abs().max().item():.4f}")
+            attn_out = torch.nan_to_num(attn_out, nan=0.0, posinf=1e4, neginf=-1e4)
+        
+        x = x + attn_out
+        
+        # MLP
+        ln_out = self.ln_2(x)
+        
+        # Check for NaN after LayerNorm
+        if torch.isnan(ln_out).any() or torch.isinf(ln_out).any():
+            print(f"[CLIP DEBUG] NaN/Inf in LayerNorm! Input stats - mean: {x.mean().item():.4f}, std: {x.std().item():.4f}, max: {x.abs().max().item():.4f}")
+            ln_out = torch.nan_to_num(ln_out, nan=0.0, posinf=1e4, neginf=-1e4)
+        
+        # Clip before MLP to prevent explosion
+        ln_out = torch.clamp(ln_out, min=-50.0, max=50.0)
+        
+        mlp_out = self.mlp(ln_out)
+        
+        # Check for NaN after MLP
+        if torch.isnan(mlp_out).any():
+            print(f"[CLIP DEBUG] NaN in MLP output!")
+            mlp_out = torch.nan_to_num(mlp_out, nan=0.0, posinf=1e4, neginf=-1e4)
+        
+        x = x + mlp_out
         return (x, video_frame)
 
 class Transformer(nn.Module):
