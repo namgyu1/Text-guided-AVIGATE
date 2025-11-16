@@ -1,0 +1,178 @@
+(video) **namgyu@kwak04**:**/data03/namgyu/AVIGATE_3**$ ./run_eval.sh
+
+/home/namgyu/anaconda3/envs/video/lib/python3.6/site-packages/torchaudio/backend/utils.py:54: UserWarning: "sox" backend is being deprecated. The default backend will be chan
+
+ged to "sox_io" backend in 0.8.0 and "sox" backend will be removed in 0.9.0. Please migrate to "sox_io" backend. Please refer to https://github.com/pytorch/audio/issues/903 f
+
+or the detail.
+
+'"sox" backend is being deprecated. '
+
+11/16/2025 12:16:27 - INFO -   Effective parameters:
+
+11/16/2025 12:16:27 - INFO -     <<< alpha: 0.1
+
+11/16/2025 12:16:27 - INFO -     <<< audio_path: ../datasets/MSRVTT/videos/audio_all_compressed
+
+11/16/2025 12:16:27 - INFO -     <<< audio_query_layers: 4
+
+11/16/2025 12:16:27 - INFO -     <<< batch_size: 32
+
+11/16/2025 12:16:27 - INFO -     <<< batch_size_val: 8
+
+11/16/2025 12:16:27 - INFO -     <<< beta: 0.2
+
+11/16/2025 12:16:27 - INFO -     <<< cache_dir:
+
+11/16/2025 12:16:27 - INFO -     <<< coef_lr: 0.001
+
+11/16/2025 12:16:27 - INFO -     <<< cross_model: cross-base
+
+11/16/2025 12:16:27 - INFO -     <<< cross_num_hidden_layers: 4
+
+11/16/2025 12:16:27 - INFO -     <<< data_path: ../datasets/MSRVTT/MSRVTT_data.json
+
+11/16/2025 12:16:27 - INFO -     <<< datatype: msrvtt
+
+11/16/2025 12:16:27 - INFO -     <<< do_eval: True
+
+11/16/2025 12:16:27 - INFO -     <<< do_lower_case: False
+
+11/16/2025 12:16:27 - INFO -     <<< do_pretrain: False
+
+11/16/2025 12:16:27 - INFO -     <<< do_train: False
+
+11/16/2025 12:16:27 - INFO -     <<< epochs: 5
+
+11/16/2025 12:16:27 - INFO -     <<< eval_frame_order: 0
+
+11/16/2025 12:16:27 - INFO -     <<< eval_max_frames: 12
+
+11/16/2025 12:16:27 - INFO -     <<< expand_msrvtt_sentences: True
+
+11/16/2025 12:16:27 - INFO -     <<< feature_framerate: 1
+
+11/16/2025 12:16:27 - INFO -     <<< features_path: ../datasets/MSRVTT/videos/all_compressed
+
+11/16/2025 12:16:27 - INFO -     <<< fp16: False
+
+11/16/2025 12:16:27 - INFO -     <<< fp16_opt_level: O1
+
+11/16/2025 12:16:27 - INFO -     <<< freeze_layer_num: 12
+
+11/16/2025 12:16:27 - INFO -     <<< gradient_accumulation_steps: 1
+
+11/16/2025 12:16:27 - INFO -     <<< hard_negative_rate: 0.5
+
+11/16/2025 12:16:27 - INFO -     <<< init_model: ckpts/TAVIGATE_L2/pytorch_model.bin.4
+
+11/16/2025 12:16:27 - INFO -     <<< linear_patch: 2d
+
+11/16/2025 12:16:27 - INFO -     <<< local_rank: 0
+
+11/16/2025 12:16:27 - INFO -     <<< loose_type: True
+
+11/16/2025 12:16:27 - INFO -     <<< lr: 0.0001
+
+11/16/2025 12:16:27 - INFO -     <<< lr_decay: 0.9
+
+11/16/2025 12:16:27 - INFO -     <<< margin: 0.1
+
+11/16/2025 12:16:27 - INFO -     <<< margin_BD: 0.1
+
+11/16/2025 12:16:27 - INFO -     <<< max_frames: 12
+
+11/16/2025 12:16:27 - INFO -     <<< max_words: 32
+
+11/16/2025 12:16:27 - INFO -     <<< n_display: 50
+
+11/16/2025 12:16:27 - INFO -     <<< n_gpu: 1
+
+11/16/2025 12:16:27 - INFO -     <<< n_pair: 1
+
+11/16/2025 12:16:27 - INFO -     <<< negative_weighting: 1
+
+11/16/2025 12:16:27 - INFO -     <<< num_thread_reader: 4
+
+11/16/2025 12:16:27 - INFO -     <<< output_dir: ckpts/TAVIGATE_L2
+
+11/16/2025 12:16:27 - INFO -     <<< pretrained_clip_name: ViT-B/32
+
+11/16/2025 12:16:27 - INFO -     <<< rank: 0
+
+11/16/2025 12:16:27 - INFO -     <<< resume_model: None
+
+11/16/2025 12:16:27 - INFO -     <<< sampled_use_mil: False
+
+11/16/2025 12:16:27 - INFO -     <<< seed: 42
+
+11/16/2025 12:16:27 - INFO -     <<< sim_header: seqTransf
+
+11/16/2025 12:16:27 - INFO -     <<< slice_framepos: 2
+
+11/16/2025 12:16:27 - INFO -     <<< task_type: retrieval
+
+11/16/2025 12:16:27 - INFO -     <<< temperature: 1.0
+11/16/2025 12:16:27 - INFO -     <<< text_num_hidden_layers: 12
+11/16/2025 12:16:27 - INFO -     <<< train_csv: ../datasets/MSRVTT/MSRVTT_train.9k.csv
+11/16/2025 12:16:27 - INFO -     <<< train_frame_order: 0
+11/16/2025 12:16:27 - INFO -     <<< use_mil: False
+11/16/2025 12:16:27 - INFO -     <<< val_csv: ../datasets/MSRVTT/MSRVTT_JSFUSION_test.csv
+11/16/2025 12:16:27 - INFO -     <<< video_dim: 1024
+11/16/2025 12:16:27 - INFO -     <<< visual_num_hidden_layers: 12
+11/16/2025 12:16:27 - INFO -     <<< warmup_proportion: 0.1
+11/16/2025 12:16:27 - INFO -     <<< world_size: 1
+11/16/2025 12:16:27 - INFO -   device: cuda:0 n_gpu: 1
+11/16/2025 12:16:28 - INFO -   loading archive file /data03/namgyu/AVIGATE_3/modules/cross-base
+11/16/2025 12:16:28 - INFO -   Model config {
+"attention_probs_dropout_prob": 0.1,
+"hidden_act": "gelu",
+"hidden_dropout_prob": 0.1,
+"hidden_size": 512,
+"initializer_range": 0.02,
+"intermediate_size": 2048,
+"max_position_embeddings": 128,
+"num_attention_heads": 8,
+"num_hidden_layers": 4,
+"type_vocab_size": 2,
+"vocab_size": 512
+}
+
+11/16/2025 12:16:28 - INFO -   Weight doesn't exsits. /data03/namgyu/AVIGATE_3/modules/cross-base/cross_pytorch_model.bin
+11/16/2025 12:16:28 - WARNING -   Stage-One:True, Stage-Two:False
+11/16/2025 12:16:28 - WARNING -   Test retrieval by loose type.
+11/16/2025 12:16:28 - WARNING -          embed_dim: 512
+11/16/2025 12:16:28 - WARNING -          image_resolution: 224
+11/16/2025 12:16:28 - WARNING -          vision_layers: 12
+11/16/2025 12:16:28 - WARNING -          vision_width: 768
+11/16/2025 12:16:28 - WARNING -          vision_patch_size: 32
+11/16/2025 12:16:28 - WARNING -          context_length: 77
+11/16/2025 12:16:28 - WARNING -          vocab_size: 49408
+11/16/2025 12:16:28 - WARNING -          transformer_width: 512
+11/16/2025 12:16:28 - WARNING -          transformer_heads: 8
+11/16/2025 12:16:28 - WARNING -          transformer_layers: 12
+11/16/2025 12:16:28 - WARNING -                  linear_patch: 2d
+11/16/2025 12:16:28 - WARNING -          cut_top_layer: 0
+/home/namgyu/anaconda3/envs/video/lib/python3.6/site-packages/torch/nn/functional.py:3063: UserWarning: Default upsampling behavior when mode=bilinear is changed to align_corners=False since 0.4.0. Please specify align_corners=True if the old behavior is desired. See the documentation of nn.Upsample for details.
+"See the documentation of nn.Upsample for details.".format(mode))
+11/16/2025 12:16:31 - WARNING -          sim_header: seqTransf
+11/16/2025 12:16:43 - INFO -   --------------------
+11/16/2025 12:16:43 - INFO -   number of params (M): 170.73
+11/16/2025 12:16:43 - INFO -   ***** Running test *****
+11/16/2025 12:16:43 - INFO -     Num examples = 1000
+11/16/2025 12:16:43 - INFO -     Batch size = 8
+11/16/2025 12:16:43 - INFO -     Num steps = 125
+11/16/2025 12:16:43 - INFO -   ***** Running val *****
+11/16/2025 12:16:43 - INFO -     Num examples = 1000
+/home/namgyu/anaconda3/envs/video/lib/python3.6/site-packages/torchaudio/compliance/kaldi.py:574: UserWarning: The function torch.rfft is deprecated and will be removed in a future PyTorch release. Use the new torch.fft module functions, instead, by importing torch.fft and calling torch.fft.fft or torch.fft.rfft. (Triggered internally at  /pytorch/aten/src/ATen/native/SpectralOps.cpp:590.)
+fft = torch.rfft(strided_input, 1, normalized=False, onesided=True)
+/home/namgyu/anaconda3/envs/video/lib/python3.6/site-packages/torchaudio/compliance/kaldi.py:574: UserWarning: The function torch.rfft is deprecated and will be removed in a future PyTorch release. Use the new torch.fft module functions, instead, by importing torch.fft and calling torch.fft.fft or torch.fft.rfft. (Triggered internally at  /pytorch/aten/src/ATen/native/SpectralOps.cpp:590.)
+fft = torch.rfft(strided_input, 1, normalized=False, onesided=True)
+/home/namgyu/anaconda3/envs/video/lib/python3.6/site-packages/torchaudio/compliance/kaldi.py:574: UserWarning: The function torch.rfft is deprecated and will be removed in a future PyTorch release. Use the new torch.fft module functions, instead, by importing torch.fft and calling torch.fft.fft or torch.fft.rfft. (Triggered internally at  /pytorch/aten/src/ATen/native/SpectralOps.cpp:590.)
+fft = torch.rfft(strided_input, 1, normalized=False, onesided=True)
+/home/namgyu/anaconda3/envs/video/lib/python3.6/site-packages/torchaudio/compliance/kaldi.py:574: UserWarning: The function torch.rfft is deprecated and will be removed in a future PyTorch release. Use the new torch.fft module functions, instead, by importing torch.fft and calling torch.fft.fft or torch.fft.rfft. (Triggered internally at  /pytorch/aten/src/ATen/native/SpectralOps.cpp:590.)
+fft = torch.rfft(strided_input, 1, normalized=False, onesided=True)
+11/16/2025 12:42:44 - INFO -   sim matrix size: 1000, 1000
+11/16/2025 12:42:44 - INFO -     Length-T: 1000, Length-V:1000
+11/16/2025 12:42:44 - INFO -   Text-to-Video:
+11/16/2025 12:42:44 - INFO -    >>>  R@1: 66.0 - R@5: 88.9 - R@10: 94.2 - Median R: 1.0 - Mean R: 3.3
