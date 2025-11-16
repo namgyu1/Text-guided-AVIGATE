@@ -37,8 +37,7 @@ To solve this, I redesigned the Gated Fusion Transformer to be **Query-Aware**, 
 
 2.  **Text-Injected MHA Query :**
     In the original cross-attention MHA block, the Query is generated only from Visual Frame Embeddings (V), while Key and Value are from Audio Embeddings (A). This finds audio features relevant only to the visual content.
-    
-    I modified this core mechanism by injecting the Text Embedding (T) directly into the Visual Frame Embeddings (V) before this combined vector is projected to create the Query (Q). This change allows the model to find audio features that are relevant not just to the visual content, but to the semantic intent of the text query.
+    I  modified this core mechanism by injecting the Text Embedding (T) directly into the Visual Frame Embeddings (V) before this combined vector is projected to create the Query. This change allows the model to find audio features that are relevant not just to the visual content, but to the semantic intent of the text query.
 
 4.  **Gated Text Injection (Gate for Text-Injection):**
     To prevent the text query from overpowering the visual features, a **new MLP gate** was implemented. This gate dynamically controls the *amount* of text information (T) injected into the MHA Query, based on the context of all three modalities (T, V, and A).
