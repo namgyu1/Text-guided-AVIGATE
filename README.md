@@ -22,7 +22,7 @@ On MSRVTT (CLIP-ViT B/32):
 
 The original AVIGATE model achieves SOTA by selectively fusing audio (A) and visual (V) information using a Gated Fusion Transformer.
 
-However, this fusion process is **Text-Agnostic**. The gating mechanism only considers the relationship *within* the video (V-A interaction) and **completely ignores the text query (T)**.
+However, this fusion process is **Text-Agnostic**. The gating mechanism only considers the relationship *within* the video (V-A interaction) and **ignores the text query (T)**.
 
 This is suboptimal. The relevance of an audio cue is highly dependent on the text query.
 
