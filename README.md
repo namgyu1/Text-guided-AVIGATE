@@ -18,7 +18,7 @@ On MSRVTT (CLIP-ViT B/32):
 
 ---
 
-## 1. Problem: The 'Text-Agnostic' Limitation of AVIGATE
+## 1. Problem: The Text-Agnostic Limitation of AVIGATE
 
 The original AVIGATE model achieves SOTA by selectively fusing audio (A) and visual (V) information using a Gated Fusion Transformer.
 
@@ -26,7 +26,7 @@ However, this fusion process is **Text-Agnostic**. The gating mechanism only con
 
 This is suboptimal. The relevance of an audio cue is highly dependent on the text query.
 
-## 2. Solution: 'Query-Aware' (Text-Guided) Architecture
+## 2. Solution: Query-Aware (Text-Guided) Architecture
 
 To solve this, I redesigned the Gated Fusion Transformer to be **Query-Aware**, making the text query (T) an active participant in the fusion process at multiple levels.
 
