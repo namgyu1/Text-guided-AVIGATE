@@ -779,9 +779,20 @@ def main():
                 logger.info("Saved loss: %.6f", checkpoint['loss'])
             logger.info("=====================")
             
-            optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-            resumed_epoch = checkpoint['epoch']+1
-            resumed_loss = checkpoint['loss']
+            # Handle both old and new checkpoint formats
+            if 'optimizer_state_dict' in checkpoint:
+                optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+            else:
+                # New format: optimizer saved directly
+                optimizer.load_state_dict(checkpoint)
+            
+            if 'epoch' in checkpoint:
+                resumed_epoch = checkpoint['epoch']+1
+            else:
+                resumed_epoch = 0
+                
+            if 'loss' in checkpoint:
+                resumed_loss = checkpoint['loss']
             
             # Resume scheduler state if available
             if 'scheduler_state_dict' in checkpoint and scheduler is not None:
